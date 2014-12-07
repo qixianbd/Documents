@@ -1,0 +1,110 @@
+在eclipse 配置参数为： 
+-o corenum=6 testcase/mst.rom
+
+上述表示 核的个数为6个， 运行的rom为testcase/mst.rom
+
+-o corenum=8 -o filelog -o noconsolelog testcase/em3d.rom
+
+上述配置表示 核的个数为8个， 运行时输出filelog, 不输出consolelog，  运行的rom为 testcase/em3d.rom
+
+默认情况下的配置为nofilelog, noconsolelog
+命令行的格式位
+[optionslist] romfile
+optionslist = [-o option]*			
+注意如上面的例子所示， 如果要带option, 则每一个option都必须带有-o 标志。也可以不带有任何option.
+
+下面的两个是等价的
+-o nofilelog testcase/mst.rom
+testcase/mst.rom
+
+
+要更改运行配置， 也可以在该配置文件里进行更改。
+这一块的配置代码为optiontbl.h
+如果我们只是要更改配置， 基本上我们不需要更改代码（optiontbl.h）, 因为，代码发挥的效力优先级太低。
+默认情况下， 配置的效力优先级为
+命令行配置（命令行参数）   >    配置文本文件（vmipsrc）  >  代码里的默认值(optiontbl.h)
+大于的意思是， 前者的配置可以覆盖后者； 当两者都进行了设置时， 以前者的配置生效。
+
+模拟器的标准配置文件为源码所在目录的vimpsrc文件。
+下面是一个vmipsrc 文件的例子：
+
+
+## All of the following settings are defaults.
+## You can change them on a system-wide basis using this file.
+##
+# bootmsg
+# clockdevice
+# clockdeviceirq=7
+# clockintr=200000000
+# clockspeed=250000
+# haltbreak
+# haltdevice
+# haltibe
+# loadaddr=0xbfc00000
+# memdumpfile=memdump.bin
+# memsize=0x100000
+# nodbemsg
+# nodebug
+# nodeccsr
+# nodecrtc
+# nodecserial
+# nodecstat
+# nodumpcp0
+# nodumpcpu
+# noexcmsg
+# noexcpriomsg
+# nohaltdumpcp0
+# nohaltdumpcpu
+# nohaltjrra
+# noinstcounts
+# noinstdump
+# nomemdump
+# norealtime
+# noreportirq
+# notracing
+# romfile=romfile.rom
+# spimconsole
+# timeratio=1
+# traceendpc=0
+# tracesize=100000
+# tracestartpc=0
+# ttydev2=off
+# ttydev=/dev/tty
+##
+## The following options have defaults set by `configure':
+##
+ corenum=8
+ nofilelog
+ noconsolelog
+nobigendian
+# mipstoolprefix=''
+
+要更改运行配置， 也可以在该配置文件里进行更改。
+这一块的配置代码为optiontbl.h
+如果我们只是要更改配置， 基本上我们不需要更改代码（optiontbl.h）, 因为，代码发挥的效力优先级太低。
+默认情况下， 配置的效力优先级为
+命令行配置（命令行参数）   >    配置文本文件（vmipsrc）  >  代码里的默认值(optiontbl.h)
+大于的意思是， 前者的配置可以覆盖后者； 当两者都进行了设置时， 以前者的配置生效。
+
+代码里的默认值(optiontbl.h)里的配置一块的代码如下：
+/* This is the official default options list. */
+static char *defaults_table[] = {
+    "nohaltdumpcpu", "nohaltdumpcp0", "noexcpriomsg",
+    "noexcmsg", "bootmsg", "noinstdump", "nodumpcpu", "nodumpcp0",
+    "haltibe", "haltbreak", "haltdevice", "romfile=romfile.rom",
+    "loadaddr=0xbfc00000", "noinstcounts",
+    "memsize=0x100000", "nomemdump", "memdumpfile=memdump.bin",
+    "noreportirq", "ttydev=/dev/tty", "ttydev2=off",
+    "nodebug", "norealtime", "timeratio=1", "clockspeed=250000",
+    "clockintr=200000000", "clockdeviceirq=7", "clockdevice",
+    "nodbemsg", "nodecrtc", "nodeccsr", "nodecstat", "nodecserial",
+    "spimconsole", "notracing", "tracesize=100000", "nobigendian",
+    "tracestartpc=0", "traceendpc=0",
+    "mipstoolprefix=/nonexistent/mips/bin/mipsel-ecoff-",
+    "execname=none",
+    "corenum=4",
+    "nofilelog",
+    "noconsolelog",
+    NULL
+};
+
