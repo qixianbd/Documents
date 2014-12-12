@@ -1,0 +1,45 @@
+﻿Prophet 系统向64位新版ubuntu迁移
+
+
+
+1. Prophet 目录以及其下的整体运行环境的迁移以及部分模拟器的问题。 
+	主要过程参考文档Documents/Prophet/Prophet安装过程.docx 以及相同目录下的Prophet安装改进。 
+
+	为了在能够使用新的版本的系统内核， 新版本的编译器， 这里没有按照Prophet安装改进里所说的安装g++4.2.4, 而是直接使用ubuntu14.04LTS自带的g++4.8.2. 使用较为新版的g++能够使得在本项目或其他的项目中可以使用c++11相关的机制。
+
+	在这部分的迁移过程中， 主要碰到如下几个问题：
+	（1） 问题：当进入到 Prophet/prophet_ssl/binutils-2.18.50目录下， 进行make操作的时候， 会提示在某目录下ac_cv_build_alias的当前值为x86_64-unknown-linux-gnu， 与previews value i386-redhat-linux-gnu不一致， 造成冲突。  会发现会在多个子目录下有这种冲突。 
+		解决思路： 以bfd子目录为例。 bfd子目录下有一个文件confiure.cache, 该文件是存储上次config时候的配置值， 是一个旧的缓存。 我们只需要把该该文件删去就可以。（由于该文件是缓存， 删除该文件并不会导致系统关键文件的缺失和系统的崩溃。）其他子目录下的缓存文件类似， 也只需要删去即可。
+		操作方法：执行命令 rm ./bfd/config.cache ./binutils/config.cache ./etc/config.cache ./gas/config.cache ./intl/config.cache ./ld/config.cache ./libiberty/config.cache ./opcodes/config.cache
+
+	(2)如果在中间的某个过程出现错误， 根据错误提示，找出相应的错误（一般就是少加了某些头文件， 因为新版的类型检查更严格， 能够检查出老版的编译器在某些方面的放松）。 
+
+	（3） 如果进入prophet_vmips_pipeline子目录运行make命令出错， 则说明是模拟器的错误。 由于之前研究过模拟器的代码， 所以模拟器的错误要好调很多。 
+
+	（4） 模拟器可能会出现typede long long int 64intbit 冲突。 通过研究会发现那个文件不属于原始suif库， 可以将冲突的类型重新定义或者注释掉。 
+
+	（5） 模拟器可能会出现不兼容问题， 并且提示了是32位版本和64位版本不兼容， 通过google, 发现安装libstdc++.so 可以解决这个问题。 
+
+	（6） 模拟器的某些文件会提示 针对prophet没有定义的引用，　会发现这是由于Prophet Console图形界面的相关操作引起的。 在之前的版本中， 需要链接 -lXaw, 而在ubuntu14.04 gcc4.8.2中， 则需要link -lXaw -lXt -lX11.  当然在此之前， 需要在安装的过程中安装libXaw7， libXaw7-dev 相关的包。  注意在写makefile文件的时候， 这些链接的文件使放在最后的， 也就是整个g++ 执行命令行的最末尾。 具体的就是设置Makefile中的 LIBS = -lXaw -lXt -lX11. 
+
+	(7) 在make 的最后， 如果src 编译成功了， 会去编译下面的doc 子目录， 而编译doc 子目录需要一系列的工具， 所以简单的做法是需要将doc子目录下的makefile中的all target设置为空。 
+
+	
+2.  安装编译器。 
+由于我们需要修改partition 部分的算法， 所以需要编译partition部分的代码。 在编译的过程中我们发现， 原先在ubuntu10.04中能通过编译通过链接的地方， 有些地方会提示错误。 有些小错误是我们需要加入几个头文件就可以解决。 下面主要谈两个错误：
+
+1. 会提示 ld skip imcompatibal Prophet/..../suif1.so, ld can not find -lsuif1. 
+	上面只是举suif1为例进行说明， useful, machine, cfg, dfa库与此类似。
+
+	这个提示的意思是说， 我们的suif1.so 等共享库之前是直接从ubuntu10.04上拷贝过来的， 并不是通过编译打包形成的， 因此会有兼容性的问题。 （注意这个兼容性的问题不止止是32bit 与 64bit的兼容问题， 还有一些其他的可能的二进制兼容问题。） 这样需要我们的解决方案使从新编译suif编译系统， 至少是从新编译suif 通过的我们用到的那几个共享库。 
+
+	Cd Prophet; ./setup_suif
+	首先我们需要运行上面的命令来设置编译suif库所需要的部分环境变量。  然后需要依次进入suif1, useful, machine, cfg, dfa库的子目录， 运行make, make install-bin。 Make install-bin 的作用是将编译生成的.o目标文件打包成.so放进Prophet/x86-64-linux-gnu/solib目录下。  注意编译的顺序很重要， 因为这几库之间也是有部分相互依赖的。 
+
+在这个编译的过程中， 可能会碰到些问题， 其中一个提示是 machine/archData.y 中 第20行的extern “C” 与y.tab.cc 中extern “C++” 不一致， 这时， 手工将y.tab.cc 中， extern c++的地方手工改成extern C 可能会解决问题。 这一块大概的思路就是这样。  另外注意需要在编译machine库的末尾加上-lfl 代表link flex library. If you do not do this, when you run the partition executable file, you will meet a mistake,  saying ld can not find yylex() definition. So we need to link flex share library.  
+
+2. 会提示prophetcpustat 里面的相关的函数找不到， 这是因为我编写的prophetcpustat.h prophetstat.cc 没有被编译， 需要把他们加入到makefile.am, makefile中。  
+
+
+
+
